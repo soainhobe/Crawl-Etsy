@@ -234,7 +234,7 @@ namespace Crawl_Etsy
             string executablePath = Assembly.GetExecutingAssembly().Location;
             string directoryPath = System.IO.Path.GetDirectoryName(executablePath);
             DateTime currentTime = DateTime.Now;
-            string filePath = System.IO.Path.Combine(directoryPath, $"Products_{currentTime:dd_MM_yyyy}.xlsx");
+            string filePath = System.IO.Path.Combine(directoryPath, $"Products_{currentTime:dd_MM_yyyy_HH_mm_ss}.xlsx");
 
             // Lưu workbook vào thư mục của ứng dụng
             workbook.SaveAs(filePath);
