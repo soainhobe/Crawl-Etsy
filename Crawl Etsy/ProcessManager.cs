@@ -1,9 +1,9 @@
 ﻿using ClosedXML.Excel;
-using HtmlAgilityPack;
 using Newtonsoft.Json;
 using RestSharp;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
@@ -37,15 +37,16 @@ namespace Crawl_Etsy
                 }
 
                 string idShop = getIdShopByLink(urlNameShop);
-                if (idShop.Contains("NotFound")||idShop.Contains("Invalid URI"))
+                if (idShop.Contains("NotFound") || idShop.Contains("Invalid URI"))
                 {
                     Console.WriteLine("==============================================================");
                     Console.WriteLine($"=> Check the shop link again, press any key to re-enter");
                     Console.ReadLine();
                     continue;
-                }else
+                }
+                else
                     Console.WriteLine($"=> Get shop id successfully: {idShop}");
-                listProduct = await crawlProduct(idShop, countCrawl);
+                listProduct = await crawlProductOfShop(idShop, countCrawl);
 
                 Console.WriteLine("==============================================================");
                 saveProductData(listProduct);
@@ -54,6 +55,7 @@ namespace Crawl_Etsy
                 break;
             } while (true);
         }
+
         public async Task crawlByKeyword()
         {
             List<Product> listProduct = new List<Product>();
@@ -87,7 +89,7 @@ namespace Crawl_Etsy
                 }
                 else
                     Console.WriteLine($"=> Get shop id successfully: {idShop}");
-                listProduct = await crawlProduct(idShop, countCrawl, query);
+                listProduct = await crawlProductOfShop(idShop, countCrawl, query);
 
                 Console.WriteLine("==============================================================");
                 saveProductData(listProduct);
@@ -96,9 +98,58 @@ namespace Crawl_Etsy
                 break;
             } while (true);
         }
-        private async Task<List<Product>> crawlProduct(string idShop, int countCrawl, string query="")
+
+        public async Task crawlByListLink()
         {
-            List < Product > products = new List<Product>();
+            List<Product> listProduct = new List<Product>();
+            do
+            {
+                Console.Clear();
+                Console.WriteLine("====>CRAWL PRODUCT BY LIST LINK ");
+
+                Console.WriteLine("Enter path to the txt file containing the product links:");
+                string filePath = Console.ReadLine();
+
+                if (!File.Exists(filePath))
+                {
+                    Console.WriteLine("==============================================================");
+                    Console.WriteLine($"=> File path error, press any key to re-enter");
+                    Console.ReadLine();
+                    continue;
+
+                }
+                try
+                {
+                    string[] lines = File.ReadAllLines(filePath);
+                    Console.WriteLine($"=> Crawling [{lines.Length}] products...\n");
+
+                    foreach (string link in lines)
+                    {
+                        Product product = await crawlProductOfLink(link);
+                        listProduct.Add(product);
+                        Console.WriteLine($"\n-----------Successfully crawl {listProduct.Count} product ----------");
+                        Console.WriteLine($"Listing id: {product.id}");
+                        Console.WriteLine($"Title: {product.title}");
+                        Console.WriteLine($"Price: {product.price}");
+                        Console.WriteLine("--------------------------------------------------");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Error: " + ex.Message);
+                }
+
+                Console.WriteLine("==============================================================");
+                saveProductData(listProduct);
+                Console.WriteLine($"Completed {listProduct.Count}, press any key to return to the main menu...");
+                Console.ReadLine();
+                break;
+            } while (true);
+        }
+
+        private async Task<List<Product>> crawlProductOfShop(string idShop, int countCrawl, string query = "")
+        {
+            List<Product> products = new List<Product>();
             int totalCount = 0;
             int countIncludingOffset = 0;
             Console.WriteLine("=> Crawling products...\n");
@@ -186,6 +237,32 @@ namespace Crawl_Etsy
             return products;
         }
 
+        private async Task<Product> crawlProductOfLink(string urlProduct)
+        {
+            Product product = null;
+            string pattern = @"/listing/(\d+)/";
+            Match match = Regex.Match(urlProduct, pattern);
+            string productId = match.Groups[1].Value;
+
+            dynamic infoProduct = await getOtherInfoProduct(productId);
+
+            string tags = string.Join(", ", infoProduct["results"]["tags"]);
+            string title = infoProduct["results"]["title"];
+            string urlVideo = null;
+            List<string> urlImg = new List<string>();
+            for (int i = 0; i < (int)infoProduct["results"]["images_count"]; i++)
+            {
+                urlImg.Add((string)infoProduct["results"]["images"][i]["url_fullxfull"]);
+            }
+            if (infoProduct["results"]["video"] == true)
+                urlVideo = infoProduct["results"]["videos"][0]["video_url"];
+            string price = infoProduct["results"]["price_usd"];
+
+            product = new Product(productId, urlProduct, urlImg, title, tags, urlVideo, price);
+
+            return product;
+        }
+
         private void saveProductData(List<Product> products)
         {
             var workbook = new XLWorkbook();
@@ -238,7 +315,7 @@ namespace Crawl_Etsy
 
             // Lưu workbook vào thư mục của ứng dụng
             workbook.SaveAs(filePath);
-            Console.WriteLine($"Save {filePath} Completed!");
+            Console.WriteLine($"Save Completed! => {filePath}");
         }
 
         private string getIdShopByLink(string urlShop)

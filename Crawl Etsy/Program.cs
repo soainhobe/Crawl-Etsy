@@ -1,16 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using HtmlAgilityPack;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using RestSharp;
 
 namespace Crawl_Etsy
 {
@@ -25,7 +14,8 @@ namespace Crawl_Etsy
                 Console.WriteLine("MENU:");
                 Console.WriteLine("[1] CRAWL BY SHOP NAME.");
                 Console.WriteLine("[2] CRAWL BY KEYWORD ON SHOP.");
-                Console.WriteLine("[3] EXIT.");
+                Console.WriteLine("[3] CRAWL BY LIST LINK.");
+                Console.WriteLine("[4] EXIT.");
                 Console.WriteLine("CHOOSE MENU:");
                 string choice = Console.ReadLine();
 
@@ -38,6 +28,9 @@ namespace Crawl_Etsy
                         await processManager.crawlByKeyword();
                         break;
                     case "3":
+                        await processManager.crawlByListLink();
+                        break;
+                    case "4":
                         Environment.Exit(0);
                         break;
                     default:
