@@ -147,6 +147,46 @@ namespace Crawl_Etsy
             } while (true);
         }
 
+        public void createFolderProduct()
+        {
+            List<Product> listProduct = new List<Product>();
+            do
+            {
+                Console.Clear();
+                Console.WriteLine("====>CREATE PRODUCT FOLDER ");
+
+                Console.WriteLine("Enter path to the xlsx file containing the product list:");
+                string filePath = Console.ReadLine();
+
+                listProduct = ReadProductsFromExcel(filePath);
+
+                string fileName = Path.GetFileNameWithoutExtension(filePath);
+                string mainFolderPath = Path.Combine(Path.GetDirectoryName(filePath), fileName);
+                Directory.CreateDirectory(mainFolderPath);
+
+                int index = 1;
+                Console.WriteLine($"=> Downloading product {listProduct.Count} information... ");
+                foreach (var product in listProduct)
+                {
+                    Console.WriteLine($"\n-----------Downloading product {index}... ");
+
+                    string productFolderPath = Path.Combine(mainFolderPath, product.id);
+                    Directory.CreateDirectory(productFolderPath);
+
+                    if(product.urlVideo != "")
+                        downloadFileProduct(product.urlImage, productFolderPath, "video");
+                    if(product.urlImage.Count>0)
+                        downloadFileProduct(product.urlImage, productFolderPath, "image");
+
+                    index++;
+                }
+                Console.WriteLine("==============================================================");
+                Console.WriteLine($"Completed, press any key to return to the main menu...");
+                Console.ReadLine();
+                break;
+            } while (true);
+        }
+
         private async Task<List<Product>> crawlProductOfShop(string idShop, int countCrawl, string query = "")
         {
             List<Product> products = new List<Product>();
@@ -378,6 +418,90 @@ namespace Crawl_Etsy
                 }
             }
             return jsonData;
+        }
+
+        private void downloadFileProduct(List<string> urls, string folderPath, string fileType)
+        {
+            Parallel.ForEach(urls.Where(u => !string.IsNullOrEmpty(u)), new ParallelOptions { MaxDegreeOfParallelism = 5 }, url =>
+            {
+                try
+                {
+                    // Create name file with URL
+                    string originalFileName = Path.GetFileName(new Uri(url).AbsolutePath);
+                    string fileExtension = Path.GetExtension(originalFileName);
+
+                    // Check type file and create new name
+                    string newFileName = $"WTM_{Guid.NewGuid()}{fileExtension}";
+
+                    // Check type file
+                    if (fileType == "image" && !originalFileName.EndsWith(".jpg") && !originalFileName.EndsWith(".jpeg") && !originalFileName.EndsWith(".png"))
+                    {
+                        return; 
+                    }
+                    else if (fileType == "video" && !originalFileName.EndsWith(".mp4") && !originalFileName.EndsWith(".avi") && !originalFileName.EndsWith(".mkv"))
+                    {
+                        return; 
+                    }
+
+                    // Download file
+                    using (HttpClient httpClient = new HttpClient())
+                    {
+                        var response = httpClient.GetAsync(url).Result;
+                        if (response.IsSuccessStatusCode)
+                        {
+                            byte[] bytes = response.Content.ReadAsByteArrayAsync().Result;
+                            File.WriteAllBytes(Path.Combine(folderPath, newFileName), bytes);
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Failed to download {fileType} file. Status code: {response.StatusCode}");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error downloading {fileType} file: {ex.Message}");
+                }
+            });
+            Console.WriteLine("Download complete");
+        }
+
+        private static List<Product> ReadProductsFromExcel(string filePath)
+        {
+            Console.WriteLine("\n=> Getting product information from .xlsx file... ");
+            List<Product> products = new List<Product>();
+
+            using (XLWorkbook workbook = new XLWorkbook(filePath))
+            {
+                var worksheet = workbook.Worksheet(1);
+
+                bool isFirstRow = true;
+                int batchSize = 1000; 
+                int totalRows = worksheet.RowCount();
+                for (int rowOffset = 0; rowOffset < totalRows; rowOffset += batchSize)
+                {
+                    var rows = worksheet.RowsUsed().Skip(isFirstRow ? 1 : 0).Skip(rowOffset).Take(batchSize);
+                    foreach (var row in rows)
+                    {
+                        Product product = new Product
+                        {
+                            id = row.Cell(1).Value.ToString(),
+                            url = row.Cell(2).Value.ToString(),
+                            title = row.Cell(3).Value.ToString(),
+                            tag = row.Cell(4).Value.ToString(),
+                            price = row.Cell(5).Value.ToString(),
+                            urlImage = row.Cell(6).Value.ToString().Split(',').ToList(),
+                            urlVideo = row.Cell(7).Value.ToString()
+                        };
+
+                        products.Add(product);
+                    }
+
+                    isFirstRow = false;
+                }
+            }
+
+            return products;
         }
 
         private class Product

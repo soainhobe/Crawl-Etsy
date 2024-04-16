@@ -15,7 +15,8 @@ namespace Crawl_Etsy
                 Console.WriteLine("[1] CRAWL BY SHOP NAME.");
                 Console.WriteLine("[2] CRAWL BY KEYWORD ON SHOP.");
                 Console.WriteLine("[3] CRAWL BY LIST LINK.");
-                Console.WriteLine("[4] EXIT.");
+                Console.WriteLine("[4] CREATE PRODUCT FOLDER.");
+                Console.WriteLine("[5] EXIT.");
                 Console.WriteLine("CHOOSE MENU:");
                 string choice = Console.ReadLine();
 
@@ -31,6 +32,9 @@ namespace Crawl_Etsy
                         await processManager.crawlByListLink();
                         break;
                     case "4":
+                        processManager.createFolderProduct();
+                        break;
+                    case "5":
                         Environment.Exit(0);
                         break;
                     default:
