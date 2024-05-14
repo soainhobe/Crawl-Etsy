@@ -363,10 +363,11 @@ namespace Crawl_Etsy
             string status = "";
             try
             {
+                string nameShop = GetShopNameFromUrl(urlShop);
                 Console.WriteLine("=> Getting store id in progress...");
                 do
                 {
-                    var client = new RestClient(urlShop);
+                    var client = new RestClient($"https://alura-api-3yk57ena2a-uc.a.run.app/api/shops/search?search_term={nameShop}");
                     var request = new RestRequest();
                     request.AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537");
 
@@ -502,6 +503,23 @@ namespace Crawl_Etsy
             }
 
             return products;
+        }
+
+        private static string GetShopNameFromUrl(string url)
+        {
+            Regex regex = new Regex(@"shop/(?<shopName>[^/?]+)");
+
+            Match match = regex.Match(url);
+
+            if (match.Success)
+            {
+                string shopName = match.Groups["shopName"].Value;
+                return shopName;
+            }
+            else
+            {
+                return "";
+            }
         }
 
         private class Product
